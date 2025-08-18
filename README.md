@@ -1,1 +1,1 @@
-# MVP-Machine_Learnin-PUC-RIO
+# MVP-Machine_Learning-PUC-RIO
