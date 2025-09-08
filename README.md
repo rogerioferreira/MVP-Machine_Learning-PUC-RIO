@@ -1,65 +1,79 @@
 # Relatório Executivo — Previsão de Hipertensão
 
-Visão geral  
-Projeto realizado como trabalho final do Curso de Pós‑Graduação em *Machine Learning & Analytics* pela PUC‑RIO.
-Objetivo: avaliar a viabilidade de um modelo de classificação capaz de identificar pacientes com hipertensão a partir de variáveis clínicas e demográficas. 
-Dados: 1.985 registros ([dados/hypertension_dataset.csv](dados/hypertension_dataset.csv)). 
-Código e todas as saídas estão em [notebooks/hypertension_prediction.ipynb](notebooks/hypertension_prediction.ipynb).
+Resumo executivo  
+Este projeto avaliou a viabilidade de um modelo de Machine Learning para identificar pacientes com hipertensão a partir de variáveis clínicas e demográficas. O estudo utilizou um conjunto de dados sintético, porém realista, com 1.985 registros. O fluxo do trabalho seguiu uma sequência lógica: carga dos dados → exploração → pré‑processamento → comparação de modelos → validação cruzada e otimização → avaliação final → preservação do modelo.
 
-Principais conclusões (alto nível)
-- Modelo final selecionado: AdaBoost (estimador preservado em [modelos/AdaBoost_model.pkl](modelos/AdaBoost_model.pkl)).  
-- Desempenho no conjunto de teste:
-  - Acurácia: ~95.5%  
-  - Recall (métrica priorizada): ~95.5%  
-  - Reporte de classificação (resumo): Classe 0 — recall 1.00 (support 191); Classe 1 — recall 0.91 (support 206).  
-- Otimização por validação cruzada (10 folds) encontrou melhor conjunto: {'model__learning_rate': 0.1, 'model__n_estimators': 450} com CV recall ≈ 0.944 (tempo de busca ≈ 85 s). Saídas detalhadas no notebook (GridSearchCV).
-- Diferença em relação ao baseline (DummyClassifier) é estatisticamente significativa (teste de McNemar: estatística = 11.0; p‑valor ≪ 0.05).
+Onde ver o código e artefatos
+- Notebook com todo o passo a passo, gráficos e saídas: [notebooks/hypertension_prediction.ipynb](notebooks/hypertension_prediction.ipynb)  
+- Dados brutos utilizados: [dados/hypertension_dataset.csv](dados/hypertension_dataset.csv)  
+- Modelo final preservado: [modelos/AdaBoost_model.pkl](modelos/AdaBoost_model.pkl)  
+- Funções e objetos relevantes (no notebook): [`evaluate_classification`](notebooks/hypertension_prediction.ipynb), [`make_crontingency_table`](notebooks/hypertension_prediction.ipynb), [`preprocess`](notebooks/hypertension_prediction.ipynb), estimador final em [`search.best_estimator_`](notebooks/hypertension_prediction.ipynb)
 
-Sequência das análises (fluxo do relatório)
-1. Preparação do ambiente e importação de bibliotecas.  
-2. Carga e verificação dos dados: formato (1985×11), verificação de nulos (Medication ≈ 40% nulos) e duplicatas (nenhuma).  
-3. Análise exploratória: estatísticas descritivas e identificação visual de dispersões/outliers (boxplots).  
+Objetivo do estudo
+- Verificar se um classificador pode prever a presença de hipertensão com desempenho significativamente superior a um classificador de referência (baseline).
+- Priorizar a métrica recall (capturar casos positivos reais) devido ao custo associado a falsos negativos no contexto clínico.
+
+Resumo dos resultados (alto nível)
+- Modelo selecionado: AdaBoost (modelo final salvo em [modelos/AdaBoost_model.pkl](modelos/AdaBoost_model.pkl)).  
+- Desempenho no conjunto de teste (exemplos extraídos do notebook):
+  - Acurácia ≈ 95.5%  
+  - Recall ≈ 95.5% (métrica priorizada)  
+  - Relatório de classificação: Classe 0 — recall 1.00 (support 191); Classe 1 — recall 0.91 (support 206).  
+- Validação cruzada e tuning (GridSearchCV, scoring = recall ponderado, 10 folds):
+  - Melhor score CV ≈ 0.94394  
+  - Melhores hiperparâmetros: {'model__learning_rate': 0.1, 'model__n_estimators': 450}  
+  - Busca com múltiplas combinações (tempo total da busca informado no notebook).
+- Validação estatística:
+  - Comparação com o baseline (DummyClassifier) usando teste de McNemar.
+  - Estatística de teste = 11.0; p‑valor ≪ 0.05 → diferença estatisticamente significativa (ver célula do teste em [notebooks/hypertension_prediction.ipynb](notebooks/hypertension_prediction.ipynb)).
+
+Fluxo de trabalho (na ordem executada)
+1. Preparação do ambiente e definição de semente (reprodutibilidade).  
+2. Carga e inspeção inicial dos dados — formato: 1985 linhas × 11 colunas; coluna Medication com ~40.25% de valores nulos.  
+3. Análise exploratória (EDA): estatísticas descritivas, boxplots e verificação de duplicatas (nenhuma encontrada).  
 4. Pré‑processamento:
-   - Separação target/features e divisão treino/teste (stratified).  
-   - Transformações: RobustScaler para numéricas; OrdinalEncoder para binárias; OneHotEncoder + imputação ("missing_value") para categóricas; seleção de 8 features via SelectKBest. Pipeline em [`preprocess`](notebooks/hypertension_prediction.ipynb).  
-5. Treinamento comparativo: vários modelos testados (Logistic, SVM, RandomForest, XGB, LGBM, CatBoost, AdaBoost, etc.). AdaBoost foi o melhor no conjunto de teste.  
-6. Validação cruzada e tuning de hiperparâmetros: GridSearchCV com scoring por recall ponderado; resultados e melhores parâmetros publicados no notebook.  
-7. Avaliação final: predição sobre X_test, relatório de classificação e matriz de confusão. Código de avaliação em [`evaluate_classification`](notebooks/hypertension_prediction.ipynb).  
-8. Validação estatística: comparação com baseline via [`make_crontingency_table`](notebooks/hypertension_prediction.ipynb) + teste de McNemar.  
-9. Treino final com todo o dataset e salvamento do modelo final ([modelos/AdaBoost_model.pkl](modelos/AdaBoost_model.pkl)).
+   - Separação target/features (target = Has_Hypertension) e divisão treino/teste estratificada.  
+   - Transformações: RobustScaler para numéricas; OrdinalEncoder para binárias; SimpleImputer("missing_value") + OneHotEncoder (drop="first") para categóricas múltiplas; seleção de 8 features via SelectKBest. Pipeline em [`preprocess`](notebooks/hypertension_prediction.ipynb).  
+5. Treinamento comparativo: pipelines com vários modelos (Logistic, SVM, RandomForest, XGB, LGBM, CatBoost, AdaBoost, entre outros). AdaBoost destacou‑se nas métricas.  
+6. Validação cruzada e otimização de hiperparâmetros do AdaBoost (GridSearchCV com scoring por recall ponderado).  
+7. Avaliação final no conjunto de teste: relatório de classificação e matriz de confusão gerada no notebook.  
+8. Validação estatística com teste de McNemar usando a função [`make_crontingency_table`](notebooks/hypertension_prediction.ipynb).  
+9. Treinamento final com todo o dataset e salvamento do modelo em [modelos/AdaBoost_model.pkl](modelos/AdaBoost_model.pkl).
 
-Gráficos e saídas relevantes (para apresentação não‑técnica)
-- Boxplots das variáveis numéricas (Salt_Intake, Sleep_Duration, BMI) — mostra distribuição e limites aceitáveis.  
-- Gráfico de barras da distribuição do target (Has_Hypertension) — indica classes equilibradas.  
+Principais gráficos gerados (úteis para apresentação não técnica)
+- Boxplots das variáveis numéricas (Salt_Intake, Sleep_Duration, BMI) — mostram distribuição e amplitude.  
+- Gráfico de barras da distribuição do target — confirma equilíbrio entre classes.  
 - Tabela comparativa de modelos (accuracy, f1, recall, precision, auc) — AdaBoost em destaque.  
-- Matriz de confusão do modelo final — mostra como os acertos/erros se distribuem por classe.  
-Todos os gráficos e tabelas estão no [notebooks/hypertension_prediction.ipynb](notebooks/hypertension_prediction.ipynb).
+- Matriz de confusão do modelo final — apresenta visualmente acertos e erros por classe.  
+Todos os gráficos estão no notebook: [notebooks/hypertension_prediction.ipynb](notebooks/hypertension_prediction.ipynb).
 
-Números-chave (extraídos do notebook)
-- Formato dos dados: 1985 registros × 11 colunas.  
+Números‑chave (extraídos do notebook)
+- Registros: 1.985 | Atributos: 11.  
 - Percentual de nulos em Medication: 40.25%.  
-- Formato após preprocess + seleção: treino (1588, 8).  
-- Métricas comparativas (treino/teste): AdaBoost — accuracy ≈ 0.95466, recall ≈ 0.95466.  
-- GridSearchCV: "Fitting 10 folds for each of 60 candidates" → Tempo ≈ 85.47 s, melhor CV recall ≈ 0.94394, melhores parâmetros = {'model__learning_rate': 0.1, 'model__n_estimators': 450}.  
-- McNemar: estatística = 11.0, p‑valor muito menor que 0.05 (diferença significativa frente ao baseline).
+- Dimensão após preprocess + SelectKBest: treino (1588, 8).  
+- Métricas do melhor modelo (teste): accuracy ≈ 0.95466; recall ≈ 0.95466.  
+- GridSearchCV: melhor CV recall ≈ 0.94394; best_params = {'model__learning_rate': 0.1, 'model__n_estimators': 450}.  
+- McNemar: estatística = 11.0, p‑valor extremamente baixo (≪ 0.05).
 
-Artefatos e pontos de inspeção técnica
-- Notebook com todas as etapas e saídas: [notebooks/hypertension_prediction.ipynb](notebooks/hypertension_prediction.ipynb).  
-- Dados brutos: [dados/hypertension_dataset.csv](dados/hypertension_dataset.csv).  
-- Modelo final salvo: [modelos/AdaBoost_model.pkl](modelos/AdaBoost_model.pkl).  
-- Funções/objetos úteis no notebook: [`evaluate_classification`](notebooks/hypertension_prediction.ipynb), [`make_crontingency_table`](notebooks/hypertension_prediction.ipynb), [`preprocess`](notebooks/hypertension_prediction.ipynb), estimador final em [`search.best_estimator_`](notebooks/hypertension_prediction.ipynb).
+Limitações e observações
+- Dados sintéticos: necessários testes adicionais com dados reais antes de uso operacional clínico.  
+- Imputação de Medication como "missing_value": decisão prática — recomendar revisão com especialistas clínicos para entender impacto.  
+- Embora métricas sejam altas, avaliar custo operacional de falsos negativos e falsos positivos dependendo do uso final.
 
-Recomendações (não técnicas)
-- Validar o modelo em dados externos/real‑world antes de qualquer uso operacional.  
-- Revisar o tratamento de valores ausentes em Medication com especialistas clínicos (imputação por categoria "missing_value" pode esconder padrões).  
-- Preparar material para stakeholders: painel com 3 gráficos (distribuição do target, matriz de confusão, comparativo de modelos) e um resumo executivo sobre implicações de falsos negativos/positivos.  
-- Documentar decisões (por que 8 features, por que encoding/imputação) para rastreabilidade clínica e auditoria.
+Recomendações práticas (próximos passos)
+- Validar desempenho em um conjunto externo real (validação externa).  
+- Construir material de apresentação para stakeholders com 3 gráficos essenciais: distribuição do target, matriz de confusão e comparativo de modelos.  
 
-Onde encontrar detalhes de implementação e saídas
-- Notebook completo: [notebooks/hypertension_prediction.ipynb](notebooks/hypertension_prediction.ipynb) — contém código, gráficos e logs (ex.: tempo de GridSearch, relatório de classificação, print de p‑valor do McNemar).  
-- Funções: [`evaluate_classification`](notebooks/hypertension_prediction.ipynb), [`make_crontingency_table`](notebooks/hypertension_prediction.ipynb).  
-- Pipeline de pré‑processamento: [`preprocess`](notebooks/hypertension_prediction.ipynb).  
-- Resultado do tuning: ver célula GridSearchCV em [notebooks/hypertension_prediction.ipynb](notebooks/hypertension_prediction.ipynb).
+Referências de implementação (no notebook)
+- Função de avaliação: [`evaluate_classification`](notebooks/hypertension_prediction.ipynb)  
+- Criação da tabela de contingência: [`make_crontingency_table`](notebooks/hypertension_prediction.ipynb)  
+- Pipeline de pré‑processamento: [`preprocess`](notebooks/hypertension_prediction.ipynb)  
+- Estimador obtido pela busca: [`search.best_estimator_`](notebooks/hypertension_prediction.ipynb)
 
-Contato/Próximo passo sugerido
-- Preparar apresentação visual e um documento de governança com decisões de pré‑processamento e validação clínica; em seguida, executar validação externa com dados reais ou amostra hold‑out
+Contato técnico / inspeção rápida
+- Para reproduzir: abrir [notebooks/hypertension_prediction.ipynb](notebooks/hypertension_prediction.ipynb) e executar as células na sequência.  
+- Para inspecionar o dataset: [dados/hypertension_dataset.csv](dados/hypertension_dataset.csv).  
+- Para carregar o modelo final em Python: joblib.load("modelos/AdaBoost_model.pkl").
+
+Conclusão
+O estudo indica que um modelo de classificação (AdaBoost) consegue prever casos de hipertensão neste conjunto de dados com alta acurácia e recall. Recomenda‑se validação externa e revisão clínica dos tratamentos de dados antes de qualquer uso operacional.
